@@ -1,0 +1,111 @@
+name: Auto-update frontmatter & auto-merge with scope check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: write
+  pull_requests: write
+
+jobs:
+  update-and-merge:
+    runs-on: ubuntu-latest
+    # 仅对同仓库 PR 生效（fork 的 PR 无法推送）
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    steps:
+      - name: Checkout PR head branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0   # 获取完整历史，以便能访问 base 分支的文件
+
+      - name: Check if last commit is from bot
+        id: check_skip
+        run: |
+          if git log -1 --pretty=%B | grep -q "\[skip actions\]"; then
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node.js
+        if: steps.check_skip.outputs.skip == 'false'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install YAML parser
+        if: steps.check_skip.outputs.skip == 'false'
+        run: npm install js-yaml
+
+      - name: Run update and check script
+        if: steps.check_skip.outputs.skip == 'false'
+        run: node .github/scripts/update-frontmatter.js
+        env:
+          PR_AUTHOR_ID: ${{ github.event.pull_request.user.id }}
+          GITHUB_BASE_REF: ${{ github.base_ref }}
+
+      - name: Read check result
+        id: check_result
+        if: steps.check_skip.outputs.skip == 'false'
+        run: |
+          if [[ -f .github/scripts/check_result.txt ]]; then
+            result=$(cat .github/scripts/check_result.txt)
+            echo "match=$result" >> $GITHUB_OUTPUT
+          else
+            echo "match=PASS" >> $GITHUB_OUTPUT   # 默认通过
+          fi
+
+      - name: Commit and push if changed
+        if: steps.check_skip.outputs.skip == 'false'
+        id: push
+        run: |
+          if [[ -n $(git status --porcelain) ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add .
+            git commit -m "Auto-update author & date [skip actions]"
+            git push
+            echo "changed=true" >> $GITHUB_OUTPUT
+          else
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Enable auto-merge if check passed
+        if: steps.check_skip.outputs.skip == 'false' && steps.check_result.outputs.match == 'PASS'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo, number } = context.issue;
+            await github.rest.pulls.update({
+              owner,
+              repo,
+              pull_number: number,
+              auto_merge: {
+                enabled: true,
+                merge_method: 'squash'   // 可改为 'merge' 或 'rebase'
+              }
+            });
+            console.log(`Auto-merge enabled for PR #${number}`);
+
+      - name: Add comment if check failed
+        if: steps.check_skip.outputs.skip == 'false' && steps.check_result.outputs.match == 'FAIL'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo, number } = context.issue;
+            const commentBody = `⚠️ **Auto-merge blocked** for the following reasons:
+            - Files outside \`src/pages/post/\` were modified, **or**
+            - Modified/deleted files in \`src/pages/post/\` have an \`author\` field that does not match the PR author's user ID.
+            Please review manually.`;
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: number,
+              body: commentBody
+            });
+            console.log(`Comment added for PR #${number}`);
