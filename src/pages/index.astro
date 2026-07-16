@@ -1,0 +1,33 @@
+---
+import "../assets/app.css";
+import "../assets/PostList.css";
+import Head from "../components/Head.astro";
+import Card from "../components/Card.astro";
+import Navbar from "../components/NavBar.astro";
+import ThemeController from "../components/ThemeController.astro";
+import { Icon } from 'astro-icon/components';
+import SearchModal from "../components/SearchModal.astro";
+import { posts } from "../data/posts";
+---
+
+<Head />
+<Navbar />
+<ThemeController />
+<Card>
+    <h1 class="card-title">文章总览</h1>
+    <div class="grid w-full grid-cols-1 gap-3 sm:w-3/5 sm:grid-cols-3">
+        <a class="btn btn-outline" onclick="showModal()"><Icon name="material-symbols:search-rounded" />文章搜索</a>
+    </div>
+    <SearchModal />
+    <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {posts.map((post) => (
+            <a
+                href={post.url}
+                class="post rounded-xl border border-base-content/10 p-4 transition list-post hover:shadow-md"
+            >
+                <div class="text-sm opacity-70">{post.date}</div>
+                <div class="mt-2 text-lg font-semibold">{post.title}</div>
+            </a>
+        ))}
+    </div>
+</Card>

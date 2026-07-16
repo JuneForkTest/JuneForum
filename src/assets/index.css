@@ -1,0 +1,14 @@
+.slogan {
+    font-size: small;
+    color: var(--color-primary-content) !important;
+}
+
+#avatar {
+    border-radius: 100%;
+    margin-inline: auto;
+}
+
+#avatar:hover {
+    cursor: pointer;
+    will-change: transform;
+}

@@ -1,0 +1,36 @@
+---
+import "../assets/app.css";
+import Head from "../components/Head.astro";
+import Navbar from "../components/NavBar.astro";
+import Katex from "../components/Katex.astro";
+import Card from "../components/Card.astro";
+import Comments from "../components/Comments.astro";
+import Placeholder from "../components/Placeholder.astro";
+import ThemeController from "../components/ThemeController.astro";
+import type { MarkdownLayoutProps } from "astro";
+
+type Props = MarkdownLayoutProps<{
+    title: string;
+    date: string;
+    author: string;
+}>;
+
+const { frontmatter, url } = Astro.props;
+---
+
+<Head />
+<title>{frontmatter.title}</title>
+<Katex />
+<Navbar />
+<ThemeController />
+<Card>
+    <h1 class="card-title">{frontmatter.title}</h1>
+    <span class="post-date">由 <span id="github_id">{ frontmatter.author }</span> 写于 {frontmatter.date}</span>
+    <div class="post-content">
+        <slot />
+    </div>
+</Card>
+<Card>
+    <Comments />
+</Card>
+<Placeholder />

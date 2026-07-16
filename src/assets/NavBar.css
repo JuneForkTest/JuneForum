@@ -1,0 +1,26 @@
+.breadcrumb {
+    display: block;
+    max-width: calc(100vw - 6.5rem);
+}
+
+.breadcrumb .link {
+    color: var(--color-base-content);
+    text-decoration: none;
+}
+
+.breadcrumb .link:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb .breadcrumbs {
+    overflow-x: auto;
+    white-space: nowrap;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (min-width: 640px) {
+    .breadcrumb {
+        max-width: calc(100vw - 2rem);
+    }
+}
